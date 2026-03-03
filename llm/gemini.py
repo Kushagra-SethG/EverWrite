@@ -1,0 +1,16 @@
+import google.genai as genai
+from config import GEMINI_API_KEY, MODEL_NAME
+
+client = genai.Client()
+
+def generate_response(prompt):
+    response = client.models.generate_content(
+        config={
+            "temperature": 0.7,
+            "maxOutputTokens": 1500,
+            "system_instruction":prompt
+        },
+        model=MODEL_NAME,
+        contents=prompt
+    )
+    return response.text
