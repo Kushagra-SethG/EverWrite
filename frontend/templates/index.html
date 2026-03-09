@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EverWrite: The Aethel Chronicles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <!-- CRT Scanlines overlay -->
+  <div class="scanlines"></div>
+
+  <!-- ================================================================
+       START SCREEN
+       ================================================================ -->
+  <div id="start-screen">
+    <div class="start-inner">
+      <div class="pixel-deco top-deco">
+        ▓▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒▓
+      </div>
+
+      <div class="logo-text">EVERWRITE</div>
+      <div class="logo-sub">◈ THE AETHEL CHRONICLES ◈</div>
+
+      <div class="logo-divider">
+        ══════════════════════════════════
+      </div>
+
+      <div class="start-desc">
+        <p>A WORLD WHERE MAGIC IS SCIENCE.</p>
+        <p>WHERE CHOICE SHAPES DESTINY.</p>
+        <p>WHERE YOU WEAVE THE STORY.</p>
+      </div>
+
+      <div class="logo-version">RESONANCE ENGINE v1.0 // GEMINI CORE</div>
+
+      <button id="btn-start" onclick="startGame()">
+        ▶ &nbsp; BEGIN JOURNEY
+      </button>
+
+      <div class="blink-text">PRESS TO ENTER THE AETHERIC FIELD</div>
+
+      <div class="pixel-deco bottom-deco">
+        ▓▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒▓
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       GAME UI
+       ================================================================ -->
+  <div id="game-ui" class="hidden">
+
+    <!-- ── Header / HUD ────────────────────────────────────────────── -->
+    <header class="game-header">
+      <div class="header-logo">
+        <span class="logo-diamond">◆</span>
+        <span class="logo-name">EVERWRITE</span>
+      </div>
+
+      <div class="header-hud">
+        <div class="hud-item">
+          <span class="hud-label">PHASE</span>
+          <span class="hud-value phase-intro" id="hud-phase">INTRO</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
+          <span class="hud-label">FACTION</span>
+          <span class="hud-value" id="hud-faction">UNKNOWN</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
+          <span class="hud-label">EQUIPMENT</span>
+          <span class="hud-value" id="hud-equip">NONE</span>
+        </div>
+      </div>
+
+      <button class="btn-icon" onclick="newGame()" title="New Game">⟳ NEW</button>
+    </header>
+
+    <!-- ── Narrative area ─────────────────────────────────────────── -->
+    <main class="narrative-area" id="narrative-area">
+      <!-- Messages injected here by JS -->
+    </main>
+
+    <!-- ── Input area ─────────────────────────────────────────────── -->
+    <footer class="input-area">
+      <span class="input-caret">▶</span>
+      <input
+        type="text"
+        id="player-input"
+        class="player-input"
+        placeholder="TYPE YOUR CHOICE OR ACTION..."
+        maxlength="500"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="btn-send" class="btn-send" onclick="sendMessage()">SEND ▶</button>
+    </footer>
+
+  </div><!-- #game-ui -->
+
+  <script src="/static/js/game.js"></script>
+</body>
+</html>
