@@ -48,7 +48,7 @@ The app uses a Flask backend, a retro-themed frontend, semantic memory with Chro
 
 ```text
 EverWrite/
-├─ run.py
+├─ run.py                    # Root entry point
 ├─ requirements.txt
 ├─ backend/
 │  ├─ app.py                  # Flask app + HTTP/SSE routes
@@ -71,8 +71,7 @@ EverWrite/
 │     │  └─ style.css
 │     └─ js/
 │        └─ game.js           # Client state + streaming parser
-├─ game/                      # Root-level duplicate modules (legacy mirror)
-└─ llm/                       # Root-level duplicate modules (legacy mirror)
+└─ .env                       # Environment configuration (not in repo)
 ```
 
 ## ⚙️ How It Works
