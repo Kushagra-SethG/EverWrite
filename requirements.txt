@@ -1,4 +1,5 @@
 google-genai
+ollama
 chromadb
 python-dotenv
 sentence-transformers

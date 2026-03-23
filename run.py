@@ -11,4 +11,4 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 from app import app          # noqa: E402  (app.py lives in backend/)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, threaded=True)
+    app.run(debug=True, port=8000, threaded=True)
