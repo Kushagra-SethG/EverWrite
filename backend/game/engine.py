@@ -1,6 +1,6 @@
 import json
 import re
-from llm.gemini import generate_response, generate_response_stream
+from llm.groq import generate_response, generate_response_stream
 from memory.vector_store import add_memory, get_memory
 from game.prompt import build_prompt
 from game.state import GameState

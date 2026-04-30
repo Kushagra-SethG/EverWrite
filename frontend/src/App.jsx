@@ -146,6 +146,8 @@ function App() {
   const [spinIdx, setSpinIdx] = useState(0);
   const [activeTab, setActiveTab] = useState('character');
   const [statChangeHighlight, setStatChangeHighlight] = useState(null);
+  const [providerLabel, setProviderLabel] = useState('GROQ');
+  const [providerDetail, setProviderDetail] = useState('Groq primary, Ollama fallback');
   const inputRef = useRef(null);
   const narrativeRef = useRef(null);
 
@@ -159,6 +161,27 @@ function App() {
     el.style.height = '0px';
     el.style.height = `${el.scrollHeight}px`;
   }, [input]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProviderInfo() {
+      try {
+        const response = await fetch(`${apiBase}/api/provider`);
+        if (!response.ok) return;
+        const info = await response.json();
+        if (cancelled) return;
+        setProviderLabel(info.label || 'GROQ');
+        setProviderDetail(info.detail || 'Groq primary, Ollama fallback');
+      } catch {
+        // Keep the default Groq-first label if the endpoint is unavailable.
+      }
+    }
+
+    loadProviderInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase]);
 
   function scrollBottom() {
     const el = narrativeRef.current;
@@ -255,8 +278,8 @@ function App() {
   }
 
   async function startGame() {
-    pushMessage('system', '◈ INITIALISING RESONANCE ENGINE ◈');
-    setLoadingLabel('WEAVING YOUR REBIRTH...');
+    pushMessage('system', `◈ INITIALISING ${providerLabel} RESONANCE ENGINE ◈`);
+    setLoadingLabel(`${providerLabel} CHANNEL STABILISING...`);
     setIsStreaming(true);
 
     try {
@@ -336,6 +359,7 @@ function App() {
           <div className="brand-sub">A reincarnation fantasy in Aethel</div>
         </div>
         <div className="topbar-stats">
+          <div className="stat-pill"><span>AI</span><strong>{providerLabel}</strong></div>
           <div className="stat-pill"><span>PHASE</span><strong>{clampText(state.phase).toUpperCase()}</strong></div>
           <div className="stat-pill"><span>NAME</span><strong>{clampText(state.character_name)}</strong></div>
           <div className="stat-pill"><span>CLAN</span><strong>{clampText(state.faction)}</strong></div>
@@ -359,6 +383,7 @@ function App() {
               <span>{loadingLabel}</span>
             </div>
           </div>
+          <p className="provider-note">{providerDetail}</p>
         </div>
 
         <aside className="stat-cards">

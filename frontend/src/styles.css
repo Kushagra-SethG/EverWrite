@@ -231,6 +231,13 @@ button, input {
   line-height: 1.7;
 }
 
+.provider-note {
+  margin: 14px 0 0;
+  color: rgba(189, 174, 144, 0.92);
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

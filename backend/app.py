@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from game.state import GameState
 from game.engine import process_turn_stream
 from game.prompt import build_prompt, FACTIONS
-from llm.gemini import generate_response_stream
+from llm.groq import generate_response_stream, get_provider_info
 from memory.vector_store import get_memory, add_memory
 from config import (
     FLASK_SECRET_KEY,
@@ -159,6 +159,12 @@ def chat():
 def get_factions():
     """Return faction data for frontend UI display."""
     return jsonify(FACTIONS)
+
+
+@app.route("/api/provider", methods=["GET"])
+def provider_info():
+    """Return the active AI provider metadata for the frontend."""
+    return jsonify(get_provider_info())
 
 
 @app.route("/api/state", methods=["GET"])

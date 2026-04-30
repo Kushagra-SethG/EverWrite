@@ -1,11 +1,14 @@
-﻿import time
+import time
 import json
 from urllib import request as urlrequest
-from urllib import error as urlerror
-import google.genai as genai
+
+try:
+    from groq import Groq
+except ImportError:  # pragma: no cover - environment dependent
+    Groq = None
 
 from config import (
-    GEMINI_API_KEY,
+    GROQ_API_KEY,
     MODEL_NAME,
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
@@ -23,9 +26,10 @@ except ImportError:  # pragma: no cover - environment dependent
     ollama = None
 
 
-_gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+_groq_client = Groq(api_key=GROQ_API_KEY) if Groq and GROQ_API_KEY else None
 _ollama_client = ollama.Client(host=OLLAMA_BASE_URL) if ollama else None
 _OLLAMA_API_BASE = OLLAMA_BASE_URL.rstrip("/")
+_last_groq_error = ""
 _last_ollama_error = ""
 
 
@@ -95,24 +99,20 @@ def _resolve_ollama_model_name() -> str | None:
     if not model_names:
         return None
 
-    # 1) Exact configured model or namespace variant.
     for name in model_names:
         if name == OLLAMA_MODEL or name.startswith(f"{OLLAMA_MODEL}:") or name.split(":")[0] == OLLAMA_MODEL:
             return name
 
-    # 2) Any model containing configured token.
     for name in model_names:
         if OLLAMA_MODEL in name:
             return name
 
-    # 3) Common llama fallbacks when users have llama locally but renamed/tagged.
     preferred_prefixes = ("llama3", "llama3.1", "llama3.2", "llama")
     for prefix in preferred_prefixes:
         for name in model_names:
             if name.startswith(prefix):
                 return name
 
-    # 4) Last resort: first available model.
     return model_names[0]
 
 
@@ -157,6 +157,64 @@ def _is_ollama_model_available() -> bool:
     except Exception as exc:
         _last_ollama_error = f"Failed to reach Ollama at {OLLAMA_BASE_URL}: {exc}"
         return False
+
+
+def _generate_response_groq(prompt: str) -> str:
+    global _last_groq_error
+    if _groq_client is None:
+        _last_groq_error = "GROQ_API_KEY is not configured."
+        raise RuntimeError(_last_groq_error)
+
+    def groq_request():
+        response = _groq_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=GENERATION_TEMPERATURE,
+            max_tokens=GENERATION_MAX_OUTPUT_TOKENS,
+        )
+        choice = response.choices[0] if response.choices else None
+        message = getattr(choice, "message", None) if choice else None
+        return getattr(message, "content", "") or ""
+
+    try:
+        _last_groq_error = ""
+        return _with_timeout_and_retries(groq_request)
+    except Exception as exc:
+        _last_groq_error = str(exc)
+        raise
+
+
+def _generate_response_stream_groq(prompt: str):
+    global _last_groq_error
+    if _groq_client is None:
+        _last_groq_error = "GROQ_API_KEY is not configured."
+        raise RuntimeError(_last_groq_error)
+
+    def stream_request():
+        return _groq_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=GENERATION_TEMPERATURE,
+            max_tokens=GENERATION_MAX_OUTPUT_TOKENS,
+            stream=True,
+        )
+
+    try:
+        _last_groq_error = ""
+        stream = _with_timeout_and_retries(stream_request, max_retries=1)
+        for chunk in stream:
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            if not delta:
+                continue
+            text = getattr(delta, "content", None)
+            if text:
+                yield text
+    except Exception as exc:
+        _last_groq_error = str(exc)
+        raise
 
 
 def _generate_response_ollama(prompt: str) -> str:
@@ -227,59 +285,32 @@ def _generate_response_stream_ollama(prompt: str):
                 yield text
 
 
-def _generate_response_gemini(prompt: str) -> str:
-    if _gemini_client is None:
-        detail = _last_ollama_error or "Ollama is unavailable."
-        raise RuntimeError(f"Gemini API key is not configured and local Ollama is unavailable. {detail}")
-
-    def gemini_request():
-        return _gemini_client.models.generate_content(
-            config={
-                "temperature": GENERATION_TEMPERATURE,
-                "maxOutputTokens": GENERATION_MAX_OUTPUT_TOKENS,
-                "system_instruction": prompt,
-            },
-            model=MODEL_NAME,
-            contents=prompt,
-        )
-
-    response = _with_timeout_and_retries(gemini_request)
-    return response.text
-
-
-def _generate_response_stream_gemini(prompt: str):
-    if _gemini_client is None:
-        detail = _last_ollama_error or "Ollama is unavailable."
-        raise RuntimeError(f"Gemini API key is not configured and local Ollama is unavailable. {detail}")
-
-    def gemini_stream_request():
-        return _gemini_client.models.generate_content_stream(
-            model=MODEL_NAME,
-            contents=prompt,
-            config={
-                "temperature": GENERATION_TEMPERATURE,
-                "maxOutputTokens": GENERATION_MAX_OUTPUT_TOKENS,
-                "system_instruction": prompt,
-            },
-        )
-
-    stream = _with_timeout_and_retries(gemini_stream_request, max_retries=1)
-    for chunk in stream:
-        if chunk.text:
-            yield chunk.text
-
-
 def generate_response(prompt):
+    if _groq_client is not None:
+        try:
+            return _generate_response_groq(prompt)
+        except Exception:
+            pass
+
     if _is_ollama_model_available():
         try:
             return _generate_response_ollama(prompt)
         except Exception:
             pass
-    return _generate_response_gemini(prompt)
+
+    detail = _last_groq_error or _last_ollama_error or "No available LLM provider."
+    raise RuntimeError(f"Groq generation failed and Ollama is unavailable. {detail}")
 
 
 def generate_response_stream(prompt):
-    """Yields text chunks using Ollama llama3 first, then Gemini fallback."""
+    """Yields text chunks using Groq first, then Ollama fallback."""
+    if _groq_client is not None:
+        try:
+            yield from _generate_response_stream_groq(prompt)
+            return
+        except Exception:
+            pass
+
     if _is_ollama_model_available():
         try:
             yield from _generate_response_stream_ollama(prompt)
@@ -287,4 +318,27 @@ def generate_response_stream(prompt):
         except Exception:
             pass
 
-    yield from _generate_response_stream_gemini(prompt)
+    detail = _last_groq_error or _last_ollama_error or "No available LLM provider."
+    raise RuntimeError(f"Groq generation failed and Ollama is unavailable. {detail}")
+
+
+def get_provider_info():
+    if _groq_client is not None:
+        return {
+            "label": "GROQ",
+            "detail": "Groq primary, Ollama fallback",
+            "primary": "groq",
+        }
+
+    if _is_ollama_model_available():
+        return {
+            "label": "OLLAMA",
+            "detail": "Groq key missing, using Ollama",
+            "primary": "ollama",
+        }
+
+    return {
+        "label": "UNAVAILABLE",
+        "detail": "No Groq key and Ollama is unavailable",
+        "primary": "none",
+    }
