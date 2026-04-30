@@ -1,133 +1,86 @@
-# ✨ EverWrite
+# EverWrite
 
-EverWrite is an interactive AI narrative game set in the world of Aethel.
-Players make choices, pick a faction, choose equipment, and shape a branching story in real time.
+EverWrite is an AI-powered interactive fantasy game set in Aethel. You play as a reincarnated character, choose a faction, pick equipment, and shape the narrative through free-form actions.
 
-The app uses a Flask backend, a retro-themed frontend, semantic memory with ChromaDB, and an LLM routing layer that prefers local Ollama (llama3) when available.
+The project uses a Flask backend for game logic + streaming, a React/Vite frontend for UI, ChromaDB for semantic memory retrieval, and an LLM routing layer that prefers local Ollama and falls back to Gemini.
 
-> 🌌 Weave your own sci-fantasy journey with real-time AI narration.
+## Features
 
-## 🚀 Highlights
+- SSE streaming responses for live narrative output
+- Stateful progression across phases (`name` -> `intro` -> `equipment` -> `story`)
+- Faction-aware gameplay and consequence parsing
+- Semantic memory retrieval with sentence-transformer embeddings + ChromaDB
+- Local-first inference with Ollama model discovery
+- Gemini fallback when local generation is unavailable
 
-- ⚡ Streaming story responses with Server-Sent Events (SSE)
-- 🧭 Stateful sessions (phase, faction, equipment)
-- 🧠 Semantic memory retrieval with sentence-transformer embeddings
-- 📴 Offline-first LLM routing via Ollama llama3
-- ☁️ Gemini fallback when local model is unavailable
+## Tech Stack
 
-## 🛠️ Tech Stack
+- Backend: Python, Flask, Flask-CORS, python-dotenv
+- Frontend: React 18, Vite 5
+- LLM: Ollama client + Google GenAI SDK
+- Retrieval: ChromaDB + sentence-transformers
 
-### 🔧 Backend
-
-- Python 3
-- Flask
-- Flask-CORS
-- python-dotenv
-
-### 🤖 LLM + AI
-
-- Ollama Python client (local model inference)
-- Google GenAI SDK (Gemini fallback)
-- Model defaults:
-  - Ollama model: llama3
-  - Gemini model: gemini-3-flash-preview
-
-### 🧠 Memory / Retrieval
-
-- ChromaDB
-- sentence-transformers (all-MiniLM-L6-v2)
-
-### 🎨 Frontend
-
-- HTML
-- CSS
-- Vanilla JavaScript
-- SSE stream rendering for token-like live output
-
-## 🗂️ Project Structure
+## Project Structure
 
 ```text
 EverWrite/
-├─ run.py                    # Root entry point
+├─ run.py
 ├─ backend/
-│  ├─ app.py                  # Flask app + HTTP/SSE routes
-│  ├─ main.py                 # CLI runner entry
-│  ├─ config.py               # Env loading + model configuration
+│  ├─ app.py                 # Flask app + API routes + SSE responses
+│  ├─ config.py              # Environment config and defaults
+│  ├─ main.py                # CLI game runner
 │  ├─ requirements.txt
 │  ├─ game/
-│  │  ├─ engine.py            # Turn processing + state transitions
-│  │  ├─ prompt.py            # Prompt template + phase instructions
-│  │  └─ state.py             # GameState model
+│  │  ├─ engine.py           # Turn processing + consequence parsing
+│  │  ├─ prompt.py           # Prompt construction + faction lore
+│  │  └─ state.py            # Game state model
 │  ├─ llm/
-│  │  └─ gemini.py            # Ollama-first + Gemini fallback logic
+│  │  └─ gemini.py           # Ollama-first generation + Gemini fallback
 │  └─ memory/
-│     └─ vector_store.py      # ChromaDB + embedding memory retrieval
+│     └─ vector_store.py     # ChromaDB memory read/write
 ├─ frontend/
-│  ├─ templates/
-│  │  └─ index.html           # Main game UI
-│  └─ static/
-│     ├─ css/
-│     │  └─ style.css
-│     └─ js/
-│        └─ game.js           # Client state + streaming parser
-└─ .env                       # Environment configuration (not in repo)
+│  ├─ src/                   # React application
+│  ├─ index.html             # Vite entry HTML
+│  ├─ vite.config.js         # Dev proxy (/api -> Flask)
+│  ├─ templates/index.html   # Legacy template-based UI
+│  └─ static/                # Legacy static assets
+└─ chroma_db/                # Persistent vector store data
 ```
 
-## ⚙️ How It Works
+## Runtime Flow
 
-1. Client starts a session via POST /api/start.
-2. Backend creates a GameState and streams intro narration.
-3. Player sends choices via POST /api/chat.
-4. Backend builds prompt from:
-   - current game phase
-   - selected faction/equipment
-   - retrieved semantic memory context
-5. Response streams back chunk-by-chunk to the UI.
-6. State updates based on player choices and model output.
+1. Client starts a session with `POST /api/start`.
+2. Backend creates `GameState`, builds prompt context (state + memory), and streams response chunks.
+3. Client sends actions to `POST /api/chat`.
+4. Backend streams narrative text, parses optional `[CONSEQUENCE]` metadata, and updates state.
+5. Updated state is returned at stream completion.
 
-## 📴 Offline Capability (Ollama + Llama3)
+## Environment Variables
 
-EverWrite is configured to run offline for inference when Ollama is installed and the configured model exists locally.
-
-### 🔀 Routing Behavior
-
-- 1️⃣ Check whether configured Ollama model is available locally.
-- 2️⃣ If available, generate responses with Ollama (local).
-- 3️⃣ If not available (or Ollama errors), fallback to Gemini.
-- 4️⃣ If neither local model nor Gemini API key is available, request fails with a clear runtime error.
-
-This means you can run gameplay generation without internet by using Ollama llama3.
-
-### 📥 Install and Prepare Ollama
-
-1. Install Ollama: https://ollama.com/download
-2. Pull model:
-
-```bash
-ollama pull llama3
-```
-
-3. Start Ollama service (if not already running).
-
-### 🔐 Environment Setup
-
-Create a .env file in the project root:
+Create a `.env` file at the project root.
 
 ```env
+# Flask
 FLASK_HOST=127.0.0.1
 FLASK_PORT=8000
 FLASK_DEBUG=true
-FLASK_SECRET_KEY=replace-with-a-long-random-secret
+FLASK_SECRET_KEY=replace-with-a-secret
 CORS_ORIGINS=
 FRONTEND_API_BASE_URL=
 
+# LLM
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3-flash-preview
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3
 GENERATION_TEMPERATURE=0.7
-GENERATION_MAX_OUTPUT_TOKENS=1500
+GENERATION_MAX_OUTPUT_TOKENS=15000
+MODEL_REQUEST_TIMEOUT_SECONDS=60
+MODEL_REQUEST_MAX_RETRIES=2
+MODEL_RETRY_BACKOFF_SECONDS=1
+OLLAMA_MODEL_CHECK_TIMEOUT_SECONDS=5
 
+# Memory / embeddings
 TOP_K=5
 EMBEDDING_MODEL=all-MiniLM-L6-v2
 CHROMA_PERSIST_DIR=chroma_db
@@ -135,39 +88,91 @@ CHROMA_PERSIST_DIR=chroma_db
 
 Notes:
 
-- ✅ Keep GEMINI_API_KEY set if you want cloud fallback.
-- ✅ Leave GEMINI_API_KEY empty if you want strict local-only behavior.
+- If `GEMINI_API_KEY` is empty, the app works only when Ollama is available.
+- If both Gemini and local Ollama are unavailable, generation requests fail.
 
-## ▶️ Setup and Run
+## Setup
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
+### 1) Backend setup
 
 ```bash
+python -m venv .venv
+# Windows (PowerShell)
+.\.venv\Scripts\Activate.ps1
+
 pip install -r backend/requirements.txt
 ```
 
-3. Run the app:
+### 2) Frontend setup
+
+```bash
+cd frontend
+npm install
+```
+
+## Run Modes
+
+### Mode A: Full local development (recommended)
+
+Run backend and frontend in separate terminals.
+
+Terminal 1:
 
 ```bash
 python run.py
 ```
 
-4. Open:
+Terminal 2:
 
-```text
-http://127.0.0.1:8000
+```bash
+cd frontend
+npm run dev
 ```
 
-## 🔌 API Endpoints
+Open `http://127.0.0.1:5173`.
 
-- GET / -> game UI
-- POST /api/start -> starts session and streams intro
-- POST /api/chat -> streams turn response for player input
-- GET /api/state?session_id=... -> returns current state snapshot
+Vite proxies `/api` requests to Flask (`http://127.0.0.1:8000`).
 
-## 📝 Notes
+### Mode B: Serve built frontend from Flask
 
-- 📡 Streaming is implemented via text/event-stream responses.
-- 🧳 Session storage is currently in-memory (process local).
-- 🗃️ Vector memory is in-process ChromaDB client storage by default.
+Build the frontend first:
+
+```bash
+cd frontend
+npm run build
+```
+
+Then run backend:
+
+```bash
+python run.py
+```
+
+Open `http://127.0.0.1:8000`.
+
+If `frontend/dist` is missing, the root route returns a helpful message instead of UI.
+
+## API Endpoints
+
+- `GET /` -> Serves built frontend (`frontend/dist/index.html`) when available
+- `GET /assets/<path>` -> Serves built frontend assets
+- `POST /api/start` -> Creates a new session and streams intro response
+- `POST /api/chat` -> Streams turn response for a session
+- `GET /api/state?session_id=...` -> Returns current state snapshot
+- `GET /api/factions` -> Returns faction metadata
+
+## LLM Routing Behavior
+
+Generation path:
+
+1. Check Ollama availability and resolve a usable local model.
+2. Use Ollama for generation/streaming when available.
+3. Fall back to Gemini on failure or unavailable local model.
+
+This enables offline-first gameplay when Ollama is set up locally.
+
+## Current Limitations
+
+- Session state is in-memory (process-local).
+- No authentication/multi-tenant persistence layer.
+- ChromaDB data is local to this project path unless configured otherwise.
