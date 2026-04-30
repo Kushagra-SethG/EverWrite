@@ -1,12 +1,12 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
-from config import TOP_K
+from config import TOP_K, EMBEDDING_MODEL, CHROMA_PERSIST_DIR
 
-client = chromadb.Client()
+client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
 
 collection = client.get_or_create_collection(name="game_memory")
 
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
+embedder = SentenceTransformer(EMBEDDING_MODEL)
 
 def add_memory(text):
     embedding = embedder.encode(text).tolist()

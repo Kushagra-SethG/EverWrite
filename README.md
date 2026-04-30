@@ -49,7 +49,6 @@ The app uses a Flask backend, a retro-themed frontend, semantic memory with Chro
 ```text
 EverWrite/
 ├─ run.py                    # Root entry point
-├─ requirements.txt
 ├─ backend/
 │  ├─ app.py                  # Flask app + HTTP/SSE routes
 │  ├─ main.py                 # CLI runner entry
@@ -115,12 +114,23 @@ ollama pull llama3
 Create a .env file in the project root:
 
 ```env
-# Optional when using only offline Ollama mode
-GEMINI_API_KEY=
+FLASK_HOST=127.0.0.1
+FLASK_PORT=8000
+FLASK_DEBUG=true
+FLASK_SECRET_KEY=replace-with-a-long-random-secret
+CORS_ORIGINS=
+FRONTEND_API_BASE_URL=
 
-# Local model settings
-OLLAMA_MODEL=llama3
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3-flash-preview
 OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3
+GENERATION_TEMPERATURE=0.7
+GENERATION_MAX_OUTPUT_TOKENS=1500
+
+TOP_K=5
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+CHROMA_PERSIST_DIR=chroma_db
 ```
 
 Notes:
@@ -134,7 +144,7 @@ Notes:
 2. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 3. Run the app:

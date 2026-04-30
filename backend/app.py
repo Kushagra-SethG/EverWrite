@@ -2,7 +2,7 @@ import os
 import sys
 import uuid
 import json
-from flask import Flask, request, jsonify, render_template, Response, stream_with_context
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 
 # Ensure backend package imports resolve whether run from root or backend/
@@ -10,20 +10,30 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from game.state import GameState
 from game.engine import process_turn_stream
-from game.prompt import build_prompt
+from game.prompt import build_prompt, FACTIONS
 from llm.gemini import generate_response_stream
 from memory.vector_store import get_memory, add_memory
+from config import (
+    FLASK_SECRET_KEY,
+    CORS_ORIGINS,
+    FLASK_DEBUG,
+    FLASK_HOST,
+    FLASK_PORT,
+    FRONTEND_API_BASE_URL,
+)
 
 _BASE   = os.path.dirname(__file__)           # .../backend
 _FRONT  = os.path.join(_BASE, '..', 'frontend')
+_FRONT_DIST = os.path.join(_FRONT, 'dist')
+_FRONT_INDEX = os.path.join(_FRONT_DIST, 'index.html')
 
 app = Flask(
     __name__,
     template_folder=os.path.join(_FRONT, 'templates'),
     static_folder=os.path.join(_FRONT, 'static'),
 )
-app.secret_key = "everwrite-retro-2026"
-CORS(app)
+app.secret_key = FLASK_SECRET_KEY
+CORS(app, resources={r"/api/*": {"origins": CORS_ORIGINS}})
 
 # In-memory session store: { session_id: GameState }
 sessions: dict[str, GameState] = {}
@@ -44,7 +54,19 @@ def _sse(data: dict) -> str:
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    if os.path.exists(_FRONT_INDEX):
+        return send_from_directory(_FRONT_DIST, 'index.html')
+    return jsonify({
+        "message": "Frontend build not found.",
+        "hint": "Run the React frontend build in /frontend (npm install && npm run build)."
+    }), 200
+
+
+@app.route("/assets/<path:filename>")
+def frontend_assets(filename):
+    if os.path.exists(_FRONT_DIST):
+        return send_from_directory(os.path.join(_FRONT_DIST, 'assets'), filename)
+    return jsonify({"error": "Frontend assets not built."}), 404
 
 
 @app.route("/api/start", methods=["POST"])
@@ -69,7 +91,7 @@ def start_game():
                 yield _sse({"chunk": chunk, "done": False})
         except Exception as exc:
             yield _sse({"error": str(exc), "done": True, "session_id": session_id,
-                        "state": {"phase": state.phase, "faction": state.faction, "equipment": state.equipment}})
+                        "state": state.to_dict()})
             return
 
         add_memory(f"AI: {full_response}")
@@ -77,11 +99,7 @@ def start_game():
         yield _sse({
             "done": True,
             "session_id": session_id,
-            "state": {
-                "phase": state.phase,
-                "faction": state.faction,
-                "equipment": state.equipment,
-            },
+            "state": state.to_dict(),
         })
 
     return Response(
@@ -125,7 +143,7 @@ def chat():
                     yield _sse({"done": True, "state": state_dict})
         except Exception as exc:
             yield _sse({"error": str(exc), "done": True,
-                        "state": {"phase": state.phase, "faction": state.faction, "equipment": state.equipment}})
+                        "state": state.to_dict()})
 
     return Response(
         stream_with_context(generate()),
@@ -137,18 +155,20 @@ def chat():
     )
 
 
+@app.route("/api/factions", methods=["GET"])
+def get_factions():
+    """Return faction data for frontend UI display."""
+    return jsonify(FACTIONS)
+
+
 @app.route("/api/state", methods=["GET"])
 def get_state():
     session_id = request.args.get("session_id", "")
     if not session_id or session_id not in sessions:
         return jsonify({"error": "Invalid session"}), 400
     state = sessions[session_id]
-    return jsonify({
-        "phase": state.phase,
-        "faction": state.faction,
-        "equipment": state.equipment,
-    })
+    return jsonify(state.to_dict())
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000, threaded=True)
+    app.run(debug=FLASK_DEBUG, host=FLASK_HOST, port=FLASK_PORT, threaded=True)

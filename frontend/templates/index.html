@@ -69,6 +69,11 @@
         </div>
         <span class="hud-sep">│</span>
         <div class="hud-item">
+          <span class="hud-label">CHARACTER</span>
+          <span class="hud-value" id="hud-character">—</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
           <span class="hud-label">FACTION</span>
           <span class="hud-value" id="hud-faction">UNKNOWN</span>
         </div>
@@ -76,6 +81,26 @@
         <div class="hud-item">
           <span class="hud-label">EQUIPMENT</span>
           <span class="hud-value" id="hud-equip">NONE</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
+          <span class="hud-label">HEALTH</span>
+          <span class="hud-value" id="hud-health">—</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
+          <span class="hud-label">ATTUNE</span>
+          <span class="hud-value" id="hud-attunement">—</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
+          <span class="hud-label">INFLUENCE</span>
+          <span class="hud-value" id="hud-influence">—</span>
+        </div>
+        <span class="hud-sep">│</span>
+        <div class="hud-item">
+          <span class="hud-label">KNOWLEDGE</span>
+          <span class="hud-value" id="hud-knowledge">—</span>
         </div>
       </div>
 
@@ -104,6 +129,11 @@
 
   </div><!-- #game-ui -->
 
+  <script>
+    window.EVERWRITE_CONFIG = {
+      API_BASE_URL: "{{ api_base_url | default('', true) }}"
+    };
+  </script>
   <script src="/static/js/game.js"></script>
 </body>
 </html>

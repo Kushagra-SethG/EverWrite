@@ -12,6 +12,7 @@ let isStreaming = false;
 const SPINNER = ['|', '/', '—', '\\'];
 let   spinIdx  = 0;
 let   spinTimer = null;
+const API_BASE_URL = (window.EVERWRITE_CONFIG?.API_BASE_URL || '').replace(/\/$/, '');
 
 // ── DOM references ───────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -20,8 +21,13 @@ const narrativeEl  = $('narrative-area');
 const playerInput  = $('player-input');
 const btnSend      = $('btn-send');
 const hudPhase     = $('hud-phase');
+const hudCharacter = $('hud-character');
 const hudFaction   = $('hud-faction');
 const hudEquip     = $('hud-equip');
+const hudHealth    = $('hud-health');
+const hudAttune    = $('hud-attunement');
+const hudInfluence = $('hud-influence');
+const hudKnowledge = $('hud-knowledge');
 const gameUi       = $('game-ui');
 const startScreen  = $('start-screen');
 
@@ -46,7 +52,7 @@ async function startGame() {
 
   const loaderId = showLoader();
   try {
-    const response = await fetch('/api/start', { method: 'POST' });
+    const response = await fetch(`${API_BASE_URL}/api/start`, { method: 'POST' });
     hideLoader(loaderId);
 
     if (!response.ok) {
@@ -76,7 +82,7 @@ async function sendMessage() {
 
   const loaderId = showLoader();
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ session_id: sessionId, message: text }),
@@ -201,8 +207,21 @@ function updateHUD(state) {
   hudPhase.textContent = phase.toUpperCase();
   hudPhase.className   = `hud-value phase-${phase}`;
 
-  hudFaction.textContent = state.faction   ? clip(state.faction, 22)   : 'UNKNOWN';
-  hudEquip.textContent   = state.equipment ? clip(state.equipment, 22) : 'NONE';
+  hudCharacter.textContent = state.character_name ? clip(state.character_name, 15) : '—';
+  hudFaction.textContent   = state.faction   ? clip(state.faction, 20)   : 'UNKNOWN';
+  hudEquip.textContent     = state.equipment ? clip(state.equipment, 20) : 'NONE';
+  
+  // Additional attributes
+  if (hudHealth)    hudHealth.textContent    = (state.health !== undefined) ? `${state.health}/10` : '—';
+  if (hudAttune)    hudAttune.textContent    = (state.aetheric_attunement !== undefined) ? `${state.aetheric_attunement}/10` : '—';
+  if (hudInfluence) hudInfluence.textContent = (state.influence !== undefined) ? `${state.influence}/10` : '—';
+  if (hudKnowledge) hudKnowledge.textContent = (state.knowledge !== undefined) ? `${state.knowledge}/10` : '—';
+
+  // Optionally show inventory/relations as system messages in HUD area
+  if (state.inventory && Array.isArray(state.inventory)) {
+    // keep a short summary in equipment slot if equipment is empty
+    if (!state.equipment) hudEquip.textContent = state.inventory.slice(0,3).join(', ') || 'NONE';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
