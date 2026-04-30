@@ -1,3 +1,14 @@
+---
+title: EverWrite
+emoji: 🎮
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Groq-first fantasy RPG with Ollama fallback
+---
+
 # EverWrite
 
 EverWrite is an AI-powered interactive fantasy game set in Aethel. You play as a reincarnated character, choose a faction, pick equipment, and shape the narrative through free-form actions.
@@ -150,6 +161,71 @@ python run.py
 Open `http://127.0.0.1:8000`.
 
 If `frontend/dist` is missing, the root route returns a helpful message instead of UI.
+
+## Deploy on Hugging Face Spaces
+
+This repository is ready for a Docker-based Hugging Face Space. The container builds the React frontend, installs the Python backend, and starts the Flask app on port `7860`.
+
+### 1) Prepare the repository
+
+Make sure these files exist at the repository root:
+
+- `Dockerfile`
+- `.dockerignore`
+
+The app will start from `python run.py`, so the Docker image must keep `run.py`, `backend/`, and the built `frontend/dist/` folder.
+
+### 2) Create the Space
+
+1. Go to Hugging Face and create a new Space.
+2. Choose `Docker` as the Space SDK.
+3. Connect the GitHub repository or upload the source.
+4. Keep the Space public or private depending on your preference.
+
+### 3) Add secrets
+
+Set the following secret variables in the Space settings:
+
+- `GROQ_API_KEY` - required if you want Groq to be the primary model provider.
+- `GROQ_MODEL` - optional, default is `llama-3.3-70b-versatile`.
+- `OLLAMA_BASE_URL` - optional, only if you run Ollama somewhere reachable from the Space.
+- `OLLAMA_MODEL` - optional, default is `llama3`.
+
+Recommended setup for Spaces:
+
+- Use `GROQ_API_KEY` so the app can run in the hosted environment.
+- Treat Ollama as a fallback for local development, because Hugging Face Spaces does not include Ollama by default.
+
+### 4) Build and run behavior
+
+The Dockerfile does the following:
+
+1. Installs frontend dependencies with `npm ci`.
+2. Builds the React app with `npm run build`.
+3. Installs Python backend dependencies.
+4. Copies the built frontend into the runtime image.
+5. Starts the app on `0.0.0.0:7860`.
+
+### 5) First launch expectations
+
+- The first build can take a while because Python and frontend dependencies must be installed.
+- `sentence-transformers` may download its embedding model on the first request.
+- If `GROQ_API_KEY` is missing and Ollama is not reachable, the app will fail to generate responses.
+
+### 6) Persistent memory
+
+If you want the ChromaDB memory to survive restarts, enable persistent storage for the Space and keep `chroma_db/` in the mounted storage path.
+
+### 7) Local verification before pushing
+
+Build the Docker image locally first if you want to verify the Space setup:
+
+```bash
+docker build -t everwrite-space .
+docker run -p 7860:7860 --env GROQ_API_KEY=your_key everwrite-space
+```
+
+Then open `http://localhost:7860`.
 
 ## API Endpoints
 
