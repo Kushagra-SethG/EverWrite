@@ -154,12 +154,17 @@ function App() {
   const apiBase = useMemo(() => API_BASE_URL, []);
 
   useEffect(() => {
-    scrollBottom();
-  }, [messages]);
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = '0px';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
 
   function scrollBottom() {
     const el = narrativeRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }
 
   function pushMessage(role, text, status = 'normal') {
@@ -309,6 +314,13 @@ function App() {
     }
   }
 
+  function handleInputChange(event) {
+    const el = event.target;
+    setInput(el.value);
+    el.style.height = '0px';
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
   const recentRelations = useMemo(() => Object.entries(state.relationships || {}), [state.relationships]);
 
   return (
@@ -374,17 +386,28 @@ function App() {
       </section>
 
       <main className="game-grid">
-        <section className="narrative-panel" ref={narrativeRef}>
-          {messages.length === 0 ? (
-            <div className="message system intro-message">
-              Press <strong>Begin Rebirth</strong> to awaken, then choose your name, clan, and path.
-            </div>
-          ) : null}
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message message--${msg.role} message--${msg.status}`}>
-              {msg.text}
-            </div>
-          ))}
+        <section className="narrative-panel">
+          <button
+            type="button"
+            className="narrative-jump-btn"
+            onClick={scrollBottom}
+            aria-label="Jump to latest chat result"
+            title="Jump to bottom"
+          >
+            ↓
+          </button>
+          <div className="narrative-scroll" ref={narrativeRef}>
+            {messages.length === 0 ? (
+              <div className="message system intro-message">
+                Press <strong>Begin Rebirth</strong> to awaken, then choose your name, clan, and path.
+              </div>
+            ) : null}
+            {messages.map((msg) => (
+              <div key={msg.id} className={`message message--${msg.role} message--${msg.status}`}>
+                {msg.text}
+              </div>
+            ))}
+          </div>
         </section>
 
         <aside className="side-panel">
@@ -536,14 +559,15 @@ function App() {
 
       <div className="input-bar">
         <span className="input-caret">▶</span>
-        <input
+        <textarea
           ref={inputRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
           className="player-input"
           placeholder={state.phase === 'name' ? 'Enter your new name...' : 'Type your choice, plan, or action...'}
           maxLength={500}
+          rows={1}
           autoComplete="off"
           spellCheck="false"
           disabled={isStreaming && !sessionId}
